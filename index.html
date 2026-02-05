@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PW Freelancer KRA Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root{
+  --bg:#0b0f16;
+  --card:rgba(30,35,48,.9);
+  --blue:#1f6bff;
+  --green:#00e5a8;
+  --red:#ff4b4b;
+  --border:rgba(255,255,255,.08);
+}
+
+body{
+  margin:0;
+  padding:20px;
+  background:radial-gradient(circle at top,#162033,#05070c);
+  font-family:system-ui;
+  color:white;
+}
+
+.header{text-align:center;font-size:26px;font-weight:700;margin-bottom:20px}
+
+.card{
+  background:var(--card);
+  padding:22px;
+  border-radius:18px;
+  margin-bottom:20px;
+  border:1px solid var(--border);
+  box-shadow:0 0 40px rgba(0,0,0,.7);
+}
+
+input,select,button{
+  width:100%;
+  padding:13px;
+  border-radius:12px;
+  border:none;
+  margin-top:10px;
+  font-size:16px;
+}
+
+input,select{background:#202635;color:white}
+
+button{
+  background:linear-gradient(135deg,#1f6bff,#3f8cff);
+  color:white;
+  font-weight:600;
+}
+
+.red{color:var(--red)}
+.green{color:var(--green)}
+
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}
+th,td{padding:10px;border-bottom:1px solid #2a2f3d;text-align:center}
+</style>
+</head>
+
+<body>
+
+<div class="header">📊 PW Freelancer KRA Tracker</div>
+
+<div class="card" id="loginBox">
+  <h2>🔐 Login</h2>
+  <button id="googleBtn">Login with Google</button>
+</div>
+
+<div id="app" style="display:none">
+
+<div class="card">
+<h2>👥 Employee Manager</h2>
+<select id="employeeSelect"></select>
+<input id="newEmployee" placeholder="New Employee Name">
+<button id="addEmp">Add Employee</button>
+</div>
+
+<div class="card">
+<h2>📞 Daily KRA Entry</h2>
+<input type="date" id="entryDate">
+<input type="number" id="talktime" placeholder="Talktime">
+<input type="number" id="ecc" placeholder="ECC">
+<input type="number" id="sales" placeholder="Sales ₹">
+
+<button id="calc">Calculate</button>
+<button id="addDay">Add Today</button>
+<div id="output"></div>
+</div>
+
+<div class="card">
+<h2>📈 Dashboard</h2>
+<table>
+<thead>
+<tr><th>Date</th><th>KRA%</th><th>Pay</th><th>Total</th></tr>
+</thead>
+<tbody id="table"></tbody>
+</table>
+</div>
+
+<button id="logout" style="background:#ff4b4b">Logout</button>
+
+</div>
+
+<!-- FIREBASE -->
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { 
+ getAuth,
+ GoogleAuthProvider,
+ signInWithPopup,
+ onAuthStateChanged,
+ signOut
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+import {
+ getFirestore,
+ doc,
+ setDoc,
+ getDoc
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+const firebaseConfig = {
+ apiKey: "AIzaSyAFv9nmfjIrxQTpiQj1tFu14siwTEtbG4A",
+ authDomain: "pw-kras.firebaseapp.com",
+ projectId: "pw-kras",
+ storageBucket: "pw-kras.appspot.com",
+ messagingSenderId: "748513765111",
+ appId: "1:748513765111:web:90649bd02c6237a40b15f2"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth();
+const db = getFirestore();
+
+const provider = new GoogleAuthProvider();
+
+let user;
+let data={};
+
+googleBtn.onclick=()=>signInWithPopup(auth,provider);
+logout.onclick=()=>signOut(auth);
+
+onAuthStateChanged(auth,async(u)=>{
+ if(!u)return;
+ user=u;
+
+ loginBox.style.display="none";
+ appDiv.style.display="block";
+
+ const snap=await getDoc(doc(db,"users",u.uid));
+ if(snap.exists()) data=snap.data();
+ else data={employees:{}};
+
+ renderEmployees();
+});
+
+const appDiv=document.getElementById("app");
+
+async function saveCloud(){
+ await setDoc(doc(db,"users",user.uid),data);
+}
+
+function renderEmployees(){
+ employeeSelect.innerHTML="";
+ for(let e in data.employees){
+  employeeSelect.innerHTML+=`<option>${e}</option>`;
+ }
+}
+
+addEmp.onclick=()=>{
+ const n=newEmployee.value.trim();
+ if(!n)return;
+ data.employees[n]={days:[]};
+ saveCloud();
+ renderEmployees();
+};
+
+calc.onclick=()=>{
+ let talk=+talktime.value;
+ let eccV=+ecc.value;
+
+ let kra=(eccV+talk*.21).toFixed(2);
+ output.innerText="KRA "+kra+"%";
+};
+
+addDay.onclick=()=>{
+ let emp=employeeSelect.value;
+ if(!emp)return;
+
+ data.employees[emp].days.push({
+  date:entryDate.value,
+  talk:talktime.value
+ });
+
+ saveCloud();
+ alert("Saved to cloud ☁️");
+};
+
+</script>
+</body>
+</html>
